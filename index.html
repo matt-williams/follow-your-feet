@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Find Your Feet</title>
+</head>
+<style>
+.container {
+  user-select: none;
+}
+
+.channel {
+  height: 98px;
+  border: solid black 1px;
+  margin: 1px;
+  padding-top: 1px;
+}
+
+.sample {
+  width: 16px;
+  height: 96px;
+  position: relative;
+  float: left;
+}
+
+.marker {
+  position: absolute;
+  height: 4px;
+  width: 12px;
+  background: red;
+  border: solid black 1px;
+  margin-left: 1px;
+}
+</style>
+<body>
+<div>
+Length: <input id="maxLen" size="3" value="32" onChange="onLengthChange()"></input>
+Time period (&micro;s): <input id="t" size="6" value="20" onChange="updateUrl()"></input>
+Cycles: <input id="s" size="6" value="20" onChange="updateUrl()"></input>
+</div>
+<div id="container" class="container"></div>
+<input id="url" value="http://follow-your-feet.local/pulse?" onchange="onUrlChange()" style="width: 100%;"></input>
+<a id="testLink" href="http://follow-your-feet.local/pulse?" target="_blank">Test!</a>
+<script>
+var NUM_CHANS = 6;
+var samples = [];
+var maxLen = 32;
+
+function handleMouse(channel, sample, y) {
+  var value = 15 - Math.floor(y / 6);
+  samples[channel][sample] = value;
+  updateSample(channel, sample);
+  updateUrl();
+  return true;
+}
+
+for (var i = 0; i < NUM_CHANS; i++) {
+  samples[i] = new Array(maxLen).fill(0);
+}
+
+var container = document.getElementById("container");
+var channelDivs = [];
+var sampleDivs = [];
+var markerDivs = [];
+
+function updateSample(i, j) {
+  markerDivs[i][j].style.top = ((15 - samples[i][j]) * 6) + "px";
+}
+
+function updateDisplay() {
+  for (var i = 0; i < NUM_CHANS; i++) {
+    for (var j = 0; j < maxLen; j++) {
+      updateSample(i, j);
+    }
+  }
+}
+
+function createDisplay() {
+  while (container.childElementCount != 0) {
+    container.removeChild(container.childNodes[0]);
+  }
+  for (var i = 0; i < NUM_CHANS; i++) {
+    sampleDivs[i] = [];
+    markerDivs[i] = [];
+    var channelDiv = document.createElement("div");
+    channelDiv.className = "channel";
+    channelDiv.style.width = (maxLen * 16) + 'px';
+    channelDivs[i] = channelDiv;
+  
+    for (var j = 0; j < maxLen; j++) {
+      var sampleDiv = document.createElement("div");
+      sampleDiv.className = "sample";
+      sampleDiv.onclick = function(i, j) {
+        return function(e) {
+          return handleMouse(i, j, e.offsetY);
+        };
+      }(i, j);
+      sampleDiv.onmouseover = function(i, j, sampleDiv) {
+        return function(e) {
+          if ((e.buttons) && (e.target == sampleDiv)) {
+            return handleMouse(i, j, e.offsetY);
+          }
+        };
+      }(i, j, sampleDiv);
+      sampleDivs[i][j] = sampleDiv;
+      {
+        var markerDiv = document.createElement("marker");
+        markerDiv.className = "marker";
+        markerDivs[i][j] = markerDiv;
+        updateSample(i, j);
+        sampleDiv.appendChild(markerDiv);    
+      }
+      channelDiv.appendChild(sampleDiv);
+    }
+    container.appendChild(channelDiv);
+
+    var buttons = [
+      {label: "&lt;",
+       func: function(channel) {
+         samples[channel] = samples[channel].concat(samples[channel]).slice(1, maxLen + 1);
+       }},
+      {label: "&lt;10",
+       func: function(channel) {
+         samples[channel] = samples[channel].concat(samples[channel]).slice(10, maxLen + 10);
+       }},
+      {label: "&gt;",
+       func: function(channel) {
+         samples[channel] = samples[channel].concat(samples[channel]).slice(maxLen - 1, maxLen * 2 - 1);
+       }},
+      {label: "&gt;10",
+       func: function(channel) {
+         samples[channel] = samples[channel].concat(samples[channel]).slice(maxLen - 10, maxLen * 2 - 10);
+       }},
+      {label: "0",
+       func: function(channel) {
+         samples[channel].fill(0);
+       }},
+      {label: "Tri",
+       func: function(channel) {
+         for (var i = 0; i < 16; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = i;
+           }
+         }
+         for (var i = 16; i < 30; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = 30 - i;
+           }
+         }
+       }},
+      {label: "Tri2",
+       func: function(channel) {
+         for (var i = 0; i < 8; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = i * 2;
+           }
+         }
+         for (var i = 8; i < 15; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = (15 - i) * 2;
+           }
+         }
+       }},
+      {label: "Sin",
+       func: function(channel) {
+         for (var i = 0; i < 30; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = Math.floor(Math.sin(i * Math.PI / 30) * 15.5);
+           }
+         }
+       }},
+      {label: "Sin2",
+       func: function(channel) {
+         for (var i = 0; i < 15; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = Math.floor(Math.sin(i * Math.PI / 15) * 15.5);
+           }
+         }
+       }},
+      {label: "Sq",
+       func: function(channel) {
+         for (var i = 0; i < 30; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = 15;
+           }
+         }
+       }},
+      {label: "Sq2",
+       func: function(channel) {
+         for (var i = 0; i < 15; i++) {
+           if (i < maxLen) {
+             samples[channel][i] = 15;
+           }
+         }
+       }},
+      {label: "Vol++",
+       func: function(channel) {
+         for (var i = 0; i < maxLen; i++) {
+           samples[channel][i] = Math.min(samples[channel][i] * 2, 15);
+         }
+       }},
+      {label: "Vol+",
+       func: function(channel) {
+         for (var i = 0; i < maxLen; i++) {
+           samples[channel][i] = Math.min(Math.floor(samples[channel][i] * Math.sqrt(2)), 15);
+         }
+       }},
+      {label: "Vol-",
+       func: function(channel) {
+         for (var i = 0; i < maxLen; i++) {
+           samples[channel][i] = Math.floor(samples[channel][i] * Math.sqrt(2) / 2);
+         }
+       }},
+      {label: "Vol--",
+       func: function(channel) {
+         for (var i = 0; i < maxLen; i++) {
+           samples[channel][i] = Math.floor(samples[channel][i] * 0.5);
+         }
+       }},
+    ];
+    var span = document.createElement("span");
+    for (var j = 0; j < buttons.length; j++) {
+      var button = document.createElement("button");
+      button.innerHTML = buttons[j].label;
+      button.onclick = function(channel, func) {
+        return function() {
+          func(channel);
+          updateDisplay();
+        };
+      }(i, buttons[j].func);
+      span.appendChild(button);
+    }
+    container.appendChild(span);
+  }
+}
+
+createDisplay();
+
+function dec2hex(dec) {
+  if (dec < 0) {
+    return '0';
+  } else if (dec < 10) {
+    return '' + dec;
+  } else if (dec < 16) {
+    return String.fromCharCode(97 + dec - 10);
+  } else {
+    return '0';
+  }
+}
+
+function hex2dec(hexChar) {
+  var hex = hexChar.charCodeAt(0);
+  var zero = '0'.charCodeAt(0); 
+  var nine = '9'.charCodeAt(0);
+  var upperA = 'A'.charCodeAt(0); 
+  var upperF = 'F'.charCodeAt(0);
+  var lowerA = 'a'.charCodeAt(0); 
+  var lowerF = 'f'.charCodeAt(0);
+  if ((hex >= zero) && (hex <= nine)) {
+    return hex - zero;
+  } else if ((hex >= upperA) && (hex <= upperF)) {
+    return hex - upperA + 10;
+  } else if ((hex >= lowerA) && (hex <= lowerF)) {
+    return hex - lowerA + 10;
+  } else {
+    return '0';
+  }
+}
+
+var lengthField = document.getElementById("maxLen");
+var urlField = document.getElementById("url");
+var testLink = document.getElementById("testLink");
+var baseTestUrl = testLink.href;
+function updateUrl() {
+  var url = baseTestUrl;
+  url += "t=" + document.getElementById("t").value;
+  url += "s=" + document.getElementById("s").value;
+  for (var i = 0; i < NUM_CHANS; i++) {
+    url += String.fromCharCode('a'.charCodeAt(0) + i) + "="; 
+    for (var j = 0; j < maxLen; j++) {
+      url += dec2hex(samples[i][j]);
+    }
+    url += "&";
+  }
+  urlField.value = url;
+  testLink.href = url;
+}
+function onUrlChange() {
+  var sampleStrings = [];
+  var url = urlField.value;
+  var params = ((url.split('?').length > 1) ? url.split('?').slice(1).join('?') : "").split('&');
+  for (var i = 0; i < params.length; i++) {
+    var splitParams = params[i].split('=');
+    if (splitParams.length > 1) {
+      var paramName = splitParams[0];
+      var paramValue = splitParams.slice(1).join('=');
+      if (paramName == 't') {
+        document.getElementById("t").value = paramValue;
+      } else if (paramName == 's') {
+        document.getElementById("s").value = paramValue;
+      } else if (paramName.length == 1) {
+        var channel = paramName.charCodeAt(0) - 'a'.charCodeAt(0);
+        if ((channel >= 0) && (channel < NUM_CHANS)) {
+          sampleStrings[channel] = paramValue; 
+        }
+      }
+    }
+  }
+  var newMaxLen = 0;
+  for (var i = 0; i < NUM_CHANS; i++) {
+    if (sampleStrings[i] != null) {
+      newMaxLen = sampleStrings[i].length;
+    }
+  }
+  if (newMaxLen != 0) {
+    maxLen = newMaxLen;
+    for (var i = 0; i < NUM_CHANS; i++) {
+      samples[i] = [];
+      for (var j = 0; j < maxLen; j++) {
+        if ((sampleStrings[i] != null) &&
+            (sampleStrings[i].length > j)) {
+          samples[i][j] = hex2dec(sampleStrings[i].charAt(j));
+        }
+      }
+    }
+  }
+  lengthField.value = maxLen;
+  createDisplay();
+  updateUrl();
+}
+updateUrl();
+
+function onLengthChange() {
+  var newMaxLen = parseInt(lengthField.value);
+  for (var i = 0; i < NUM_CHANS; i++) {
+    if (newMaxLen > maxLen) {
+      samples[i] = samples[i].concat(new Array(newMaxLen - maxLen).fill(0));
+    } else if (newMaxLen < maxLen) {
+      samples[i] = samples[i].slice(0, newMaxLen);
+    }
+  }
+  maxLen = newMaxLen;
+  createDisplay();
+}
+
+</script>
+</body>
+</html>
