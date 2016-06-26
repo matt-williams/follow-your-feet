@@ -224,6 +224,7 @@ function createDisplay() {
       button.onclick = function(channel, func) {
         return function() {
           func(channel);
+          updateUrl();
           updateDisplay();
         };
       }(i, buttons[j].func);
@@ -269,11 +270,10 @@ function hex2dec(hexChar) {
 var lengthField = document.getElementById("maxLen");
 var urlField = document.getElementById("url");
 var testLink = document.getElementById("testLink");
-var baseTestUrl = testLink.href;
 function updateUrl() {
-  var url = baseTestUrl;
-  url += "t=" + document.getElementById("t").value;
-  url += "s=" + document.getElementById("s").value;
+  var url = urlField.value.split('?')[0] + '?';
+  url += "t=" + document.getElementById("t").value + "&";
+  url += "s=" + document.getElementById("s").value + "&";
   for (var i = 0; i < NUM_CHANS; i++) {
     url += String.fromCharCode('a'.charCodeAt(0) + i) + "="; 
     for (var j = 0; j < maxLen; j++) {
@@ -283,6 +283,7 @@ function updateUrl() {
   }
   urlField.value = url;
   testLink.href = url;
+  return true;
 }
 function onUrlChange() {
   var sampleStrings = [];
